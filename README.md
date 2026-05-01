@@ -531,6 +531,6 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 ---
 
 <p align="center">
-  <strong>Built with 🤖 by Victor Ndlovu</strong><br>
+  <strong>Created by Nazir Louis 🤖 Upgraded by Victor Ndlovu</strong><br>
   <em>Your Intelligent AI Assistant - NOVA</em>
 </p>
