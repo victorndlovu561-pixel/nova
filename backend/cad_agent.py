@@ -143,7 +143,7 @@ export_stl(result_part, 'output.stl')
                 
                 # 3. Save to Local File in cad_outputs folder
                 # Fix for Windows paths in python strings: escape backslashes
-                safe_output_path = output_stl.replace("\\", "\\\\")
+                safe_output_path = repr(output_stl)[1:-1]  # Strips quotes from repr
                 
                 with open(script_path, "w") as f:
                     # Inject output path into the script
@@ -361,7 +361,7 @@ Ensure you still export to 'output.stl'.
                 # Overwrite the script so the next iteration builds on this one
                 
                 # Fix for Windows paths in python strings: escape backslashes
-                safe_output_path = output_stl.replace("\\", "\\\\")
+                safe_output_path = repr(output_stl)[1:-1]  # Strips quotes from repr
                 
                 with open(script_path, "w") as f:
                     # Inject output path into the script

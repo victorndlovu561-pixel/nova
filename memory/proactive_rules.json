@@ -1,0 +1,392 @@
+{
+  "rules": [
+    {
+      "id": "low_battery",
+      "name": "Low Battery Warning",
+      "description": "Alert when battery drops below 20%",
+      "trigger_type": "system",
+      "condition": {
+        "metric": "battery_percent",
+        "threshold": 20,
+        "operator": "<="
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "Sir, your battery is running low at {value}%. You should plug in soon."
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 30
+    },
+    {
+      "id": "high_cpu",
+      "name": "High CPU Usage",
+      "description": "Alert when CPU usage is high for extended period",
+      "trigger_type": "system",
+      "condition": {
+        "metric": "cpu_percent",
+        "threshold": 90,
+        "operator": ">=",
+        "duration_seconds": 60
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "Sir, your CPU usage is at {value}%. Something may be consuming excessive resources."
+      },
+      "enabled": true,
+      "last_triggered": 1777622004.0787914,
+      "cooldown_minutes": 15
+    },
+    {
+      "id": "low_disk_space",
+      "name": "Low Disk Space Warning",
+      "description": "Alert when disk space is below 10%",
+      "trigger_type": "system",
+      "condition": {
+        "metric": "disk_percent",
+        "threshold": 90,
+        "operator": ">="
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "Sir, your disk is {value}% full. You may want to free up some space."
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 60
+    },
+    {
+      "id": "unfinished_tasks",
+      "name": "Incomplete Tasks Reminder",
+      "description": "Remind about tasks left incomplete from previous sessions",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_check_unfinished_tasks",
+        "check_interval_minutes": 30
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "Sir, you mentioned working on '{task}' recently. Shall we continue where you left off?"
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 60
+    },
+    {
+      "id": "historical_patterns",
+      "name": "Historical Issue Alert",
+      "description": "Alert when current work matches past issues",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_check_historical_patterns",
+        "check_interval_minutes": 10
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "Sir, this issue reminds me of '{past_solution}' from your notes. The pattern similarity is {relevance} words. Would you like me to pull up those notes?"
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 30
+    },
+    {
+      "id": "project_context",
+      "name": "Project Activity Detection",
+      "description": "Detect active project work and offer assistance",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_check_project_context",
+        "check_interval_minutes": 15
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "I see you've been working on {recent_files}. Shall I prepare the development environment or run any tests?"
+      },
+      "enabled": true,
+      "last_triggered": 1777623202.801632,
+      "cooldown_minutes": 120
+    },
+    {
+      "id": "user_patterns",
+      "name": "Routine Recognition",
+      "description": "Learn and notify based on user routines",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_check_user_patterns",
+        "check_interval_minutes": 60
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "It's your usual {typical_activity} time, Sir. {preparation}"
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 120
+    },
+    {
+      "id": "morning_briefing",
+      "name": "Morning Briefing",
+      "description": "Daily morning summary at 8 AM",
+      "trigger_type": "time",
+      "condition": {
+        "hour": 8,
+        "minute": 0,
+        "days": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "Good morning, Sir. Shall we review your projects and tasks for today?"
+      },
+      "enabled": true,
+      "last_triggered": 1777615237.0021627,
+      "cooldown_minutes": 720
+    },
+    {
+      "id": "git_uncommitted",
+      "name": "Git Uncommitted Changes",
+      "description": "Remind about uncommitted changes after work session",
+      "trigger_type": "git",
+      "condition": {
+        "repo_path": "C:\\Workspace Coldheart\\Projects\\Nova",
+        "check_interval_hours": 4
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "Sir, you have {modified} modified and {untracked} new files uncommitted. Shall I help you commit these changes?"
+      },
+      "enabled": true,
+      "last_triggered": 1777615058.4587102,
+      "cooldown_minutes": 240
+    },
+    {
+      "id": "voice_stress",
+      "name": "Voice Stress Monitor",
+      "description": "Analyze interaction patterns for stress indicators",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_analyze_voice_stress",
+        "check_interval_minutes": 5
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "{message}"
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 20
+    },
+    {
+      "id": "hardware_prediction",
+      "name": "Predictive Hardware Failure",
+      "description": "Predict hardware failures before they happen",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_predict_hardware_failure",
+        "check_interval_minutes": 30
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "{message}"
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 240
+    },
+    {
+      "id": "learn_from_fixes",
+      "name": "Learn From Past Fixes",
+      "description": "Remember solutions and suggest them preemptively",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_learn_from_past_fixes",
+        "check_interval_minutes": 15
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "{message}"
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 60
+    },
+    {
+      "id": "idle_suggestions",
+      "name": "Idle Time Suggestions",
+      "description": "When system idle for 15+ minutes, suggest productive tasks",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_check_system_idle",
+        "check_interval_minutes": 15,
+        "idle_threshold_minutes": 15
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "{message}"
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 60
+    },
+    {
+      "id": "emotional_arc",
+      "name": "Emotional Arc Tracker",
+      "description": "Track user's emotional state and detect burnout patterns",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_track_emotional_arc",
+        "check_interval_minutes": 30
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "{message}"
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 240
+    },
+    {
+      "id": "system_maintenance",
+      "name": "Autonomous System Maintenance",
+      "description": "Silently maintain system health like JARVIS maintaining the lab",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_maintain_system_health",
+        "check_interval_minutes": 60
+      },
+      "action_type": "notify",
+      "action_params": {
+        "message": "{message}",
+        "silent": true
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 60
+    },
+    {
+      "id": "environment_prep",
+      "name": "Predictive Environment Preparation",
+      "description": "Prepare workspace based on learned user patterns",
+      "trigger_type": "time",
+      "condition": {
+        "check_function": "_prepare_environment",
+        "check_interval_minutes": 60
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "{message}"
+      },
+      "enabled": true,
+      "last_triggered": 1777615237.0229692,
+      "cooldown_minutes": 240
+    },
+    {
+      "id": "network_intrusion",
+      "name": "Suspicious Network Activity",
+      "description": "Detect unusual network patterns and intrusion attempts",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_detect_intrusion_patterns",
+        "check_interval_minutes": 5
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "{message}"
+      },
+      "enabled": true,
+      "last_triggered": 1777624885.9236288,
+      "cooldown_minutes": 15
+    },
+    {
+      "id": "lab_temperature",
+      "name": "Lab Temperature Alert",
+      "description": "Monitor system temperature and thermal conditions",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_check_lab_conditions",
+        "check_interval_minutes": 5
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "Sir, {component} temperature is at {temp}\u00b0C. That's above optimal for delicate components."
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 15
+    },
+    {
+      "id": "stress_detection",
+      "name": "Stress Level Monitor",
+      "description": "Detect user stress from conversation patterns",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_analyze_emotional_state",
+        "check_interval_minutes": 10
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "You seem {stress_level}, Sir. You've used {frustration} frustration indicators in recent messages. Perhaps a break would help?"
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 30
+    },
+    {
+      "id": "workflow_prep",
+      "name": "Workflow Preparation",
+      "description": "Anticipate next steps in design/development workflow",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_predict_workflow_needs",
+        "check_interval_minutes": 10
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "I see you've created {recent_cad}. Shall I prepare the {next_step} environment?"
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 60
+    },
+    {
+      "id": "resource_prediction",
+      "name": "Resource Need Prediction",
+      "description": "Predict compute/resource needs based on activity",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_predict_resource_needs",
+        "check_interval_minutes": 15
+      },
+      "action_type": "speak",
+      "action_params": {
+        "message": "Sir, based on your recent {predicted_task} work with {sim_files} simulation files, I've noted you may need additional processing resources."
+      },
+      "enabled": true,
+      "last_triggered": 1777622981.6293132,
+      "cooldown_minutes": 60
+    },
+    {
+      "id": "auto_backup",
+      "name": "Autonomous Backup",
+      "description": "Silently backup files when threshold reached",
+      "trigger_type": "custom",
+      "condition": {
+        "check_function": "_check_autonomous_actions",
+        "check_interval_minutes": 60
+      },
+      "action_type": "execute",
+      "action_params": {
+        "tool": "backup",
+        "silent": true
+      },
+      "enabled": true,
+      "last_triggered": null,
+      "cooldown_minutes": 1440
+    }
+  ]
+}

@@ -16,6 +16,7 @@ import os
 import json
 from datetime import datetime
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 
 
@@ -28,7 +29,19 @@ from kasa_agent import KasaAgent
 
 # Create a Socket.IO server
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan context manager for startup/shutdown."""
+    # Startup
+    print("[SERVER] Startup: Initializing...")
+    import sys
+    print(f"[SERVER DEBUG] Python Version: {sys.version}")
+    yield
+    # Shutdown cleanup
+    print("[SERVER] Shutdown: Cleaning up...")
+
+app = FastAPI(lifespan=lifespan)
 app_socketio = socketio.ASGIApp(sio, app)
 
 import signal
@@ -60,17 +73,46 @@ SETTINGS_FILE = "settings.json"
 DEFAULT_SETTINGS = {
     "face_auth_enabled": False, # Default OFF as requested
     "tool_permissions": {
-        "generate_cad": True,
-        "run_web_agent": True,
-        "write_file": True,
-        "read_directory": True,
-        "read_file": True,
-        "create_project": True,
-        "switch_project": True,
-        "list_projects": True
+        "generate_cad_prototype": False,
+        "write_file": False,
+        "read_directory": False,
+        "read_file": False,
+        "generate_cad": False,
+        "run_web_agent": False,
+        "create_project": False,
+        "switch_project": False,
+        "list_projects": False,
+        "list_smart_devices": False,
+        "control_light": False,
+        "discover_printers": False,
+        "print_stl": False,
+        "get_print_status": False,
+        "iterate_cad": False,
+        "execute_task": False,
+        "open_app": False,
+        "web_search": False,
+        "weather_report": False,
+        "send_message": False,
+        "reminder": False,
+        "youtube_video": False,
+        "screen_process": False,
+        "computer_settings": False,
+        "browser_control": False,
+        "file_controller": False,
+        "desktop_control": False,
+        "code_helper": False,
+        "dev_agent": False,
+        "agent_task": False,
+        "computer_control": False,
+        "game_updater": False,
+        "flight_finder": False,
+        "shutdown_jarvis": False,
+        "save_memory": False,
     },
-    "printers": [], # List of {host, port, name, type}
+    "window_positions": {},
+    "camera_position": {},
     "kasa_devices": [], # List of {ip, alias, model}
+    "printers": [], # List of {host, port, name, type}
     "camera_flipped": False # Invert cursor horizontal direction
 }
 
@@ -108,21 +150,8 @@ authenticator = None
 kasa_agent = KasaAgent(known_devices=SETTINGS.get("kasa_devices"))
 # tool_permissions is now SETTINGS["tool_permissions"]
 
-@app.on_event("startup")
-async def startup_event():
-    import sys
-    print(f"[SERVER DEBUG] Startup Event Triggered")
-    print(f"[SERVER DEBUG] Python Version: {sys.version}")
-    try:
-        loop = asyncio.get_running_loop()
-        print(f"[SERVER DEBUG] Running Loop: {type(loop)}")
-        policy = asyncio.get_event_loop_policy()
-        print(f"[SERVER DEBUG] Current Policy: {type(policy)}")
-    except Exception as e:
-        print(f"[SERVER DEBUG] Error checking loop: {e}")
-
-    print("[SERVER] Startup: Initializing Kasa Agent...")
-    await kasa_agent.initialize()
+# Startup logic moved to lifespan context manager above
+# Kasa agent initialization happens in lifespan context
 
 @app.get("/status")
 async def status():
@@ -226,7 +255,7 @@ async def start_audio(sid, data=None):
         
     # Callback to send Transcription data to frontend
     def on_transcription(data):
-        # data = {"sender": "User"|"ADA", "text": "..."}
+        # data = {"sender": "User"|"NOVA", "text": "..."}
         asyncio.create_task(sio.emit('transcription', data))
 
     # Callback to send Confirmation Request to frontend
@@ -238,7 +267,7 @@ async def start_audio(sid, data=None):
     # Callback to send CAD status to frontend
     def on_cad_status(status):
         # status can be: 
-        # - a string like "generating" (from ada.py handle_cad_request)
+        # - a string like "generating" (from nova.py handle_cad_request)
         # - a dict with {status, attempt, max_attempts, error} (from CadAgent)
         if isinstance(status, dict):
             print(f"Sending CAD Status: {status.get('status')} (attempt {status.get('attempt')}/{status.get('max_attempts')})")
@@ -268,7 +297,7 @@ async def start_audio(sid, data=None):
         print(f"Sending Error to frontend: {msg}")
         asyncio.create_task(sio.emit('error', {'msg': msg}))
 
-    # Initialize ADA
+    # Initialize NOVA
     try:
         print(f"Initializing AudioLoop with device_index={device_index}")
         audio_loop = ada.AudioLoop(
@@ -313,8 +342,8 @@ async def start_audio(sid, data=None):
         
         loop_task.add_done_callback(handle_loop_exit)
         
-        print("Emitting 'A.D.A Started'")
-        await sio.emit('status', {'msg': 'A.D.A Started'})
+        print("Emitting 'NOVA Started'")
+        await sio.emit('status', {'msg': 'NOVA Started'})
 
         # Load saved printers
         saved_printers = SETTINGS.get("printers", [])
@@ -333,7 +362,7 @@ async def start_audio(sid, data=None):
         asyncio.create_task(monitor_printers_loop())
         
     except Exception as e:
-        print(f"CRITICAL ERROR STARTING ADA: {e}")
+        print(f"CRITICAL ERROR STARTING NOVA: {e}")
         import traceback
         traceback.print_exc()
         await sio.emit('error', {'msg': f"Failed to start: {str(e)}"})
@@ -379,7 +408,7 @@ async def stop_audio(sid):
         audio_loop.stop() 
         print("Stopping Audio Loop")
         audio_loop = None
-        await sio.emit('status', {'msg': 'A.D.A Stopped'})
+        await sio.emit('status', {'msg': 'NOVA Stopped'})
 
 @sio.event
 async def pause_audio(sid):
@@ -460,6 +489,15 @@ async def user_input(sid, data):
         # Log User Input to Project History
         if audio_loop and audio_loop.project_manager:
             audio_loop.project_manager.log_chat("User", text)
+        
+        # Save to MemoryManager (JARVIS-style persistent memory)
+        if audio_loop and audio_loop.memory_manager:
+            audio_loop.memory_manager.save_interaction(
+                sender="User",
+                text=text,
+                context="conversations",
+                metadata={"project": audio_loop.project_manager.current_project if audio_loop.project_manager else "temp"}
+            )
             
         # Use the same 'send' method that worked for audio, as 'send_realtime_input' and 'send_client_content' seem unstable in this env
         # INJECT VIDEO FRAME IF AVAILABLE (VAD-style logic for Text Input)
@@ -940,9 +978,12 @@ async def update_settings(sid, data):
     
     # Handle specific keys if needed
     if "tool_permissions" in data:
+        updated_count = len(data["tool_permissions"])
+        print(f"[SERVER] Updating {updated_count} tool permissions")
         SETTINGS["tool_permissions"].update(data["tool_permissions"])
         if audio_loop:
             audio_loop.update_permissions(SETTINGS["tool_permissions"])
+            print(f"[SERVER] Applied permissions to running AudioLoop")
             
     if "face_auth_enabled" in data:
         SETTINGS["face_auth_enabled"] = data["face_auth_enabled"]
@@ -956,6 +997,14 @@ async def update_settings(sid, data):
     if "camera_flipped" in data:
         SETTINGS["camera_flipped"] = data["camera_flipped"]
         print(f"[SERVER] Camera flip set to: {data['camera_flipped']}")
+
+    if "window_positions" in data:
+        SETTINGS["window_positions"] = data["window_positions"]
+        print(f"[SERVER] Saved window positions for {len(data['window_positions'])} elements")
+        
+    if "camera_position" in data:
+        SETTINGS["camera_position"] = data["camera_position"]
+        print(f"[SERVER] Saved camera position: {data['camera_position']}")
 
     save_settings()
     # Broadcast new full settings

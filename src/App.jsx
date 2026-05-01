@@ -7,7 +7,7 @@ import CadWindow from './components/CadWindow';
 import BrowserWindow from './components/BrowserWindow';
 import ChatModule from './components/ChatModule';
 import ToolsModule from './components/ToolsModule';
-import { Mic, MicOff, Settings, X, Minus, Power, Video, VideoOff, Layout, Hand, Printer, Clock } from 'lucide-react';
+import { Mic, MicOff, Settings, X, Minus, Power, Video, VideoOff, Layout, Hand, Printer, Clock, GripVertical } from 'lucide-react';
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 // MemoryPrompt removed - memory is now actively saved to project
 import ConfirmationPopup from './components/ConfirmationPopup';
@@ -85,17 +85,40 @@ function App() {
     const [showSettings, setShowSettings] = useState(false);
     const [currentProject, setCurrentProject] = useState('default');
 
+    // Load saved positions from localStorage or use defaults
+    const loadSavedPositions = () => {
+        const saved = localStorage.getItem('nova_window_positions');
+        const savedCamera = localStorage.getItem('nova_camera_position');
+        
+        if (savedCamera) {
+            try {
+                const camPos = JSON.parse(savedCamera);
+                if (camPos.x !== undefined) setCameraPosition(camPos);
+            } catch (e) { console.log('No saved camera position'); }
+        }
+        
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) { console.log('Failed to parse saved positions'); }
+        }
+        return null;
+    };
+
     // Modular Mode State
     const [isModularMode, setIsModularMode] = useState(false);
-    const [elementPositions, setElementPositions] = useState({
-        video: { x: 40, y: 80 }, // Initial positions (approximate)
-        visualizer: { x: window.innerWidth / 2, y: window.innerHeight / 2 - 150 },
-        chat: { x: window.innerWidth / 2, y: window.innerHeight / 2 + 100 },
-        cad: { x: window.innerWidth / 2 + 300, y: window.innerHeight / 2 },
-        browser: { x: window.innerWidth / 2 - 300, y: window.innerHeight / 2 },
-        kasa: { x: window.innerWidth / 2 + 350, y: window.innerHeight / 2 - 100 },
-        printer: { x: window.innerWidth / 2 - 350, y: window.innerHeight / 2 - 100 },
-        tools: { x: window.innerWidth / 2, y: window.innerHeight - 100 } // Fixed bottom OFFSET
+    const [elementPositions, setElementPositions] = useState(() => {
+        const saved = loadSavedPositions();
+        return saved || {
+            video: { x: 40, y: 80 },
+            visualizer: { x: window.innerWidth / 2, y: window.innerHeight / 2 - 150 },
+            chat: { x: window.innerWidth / 2, y: window.innerHeight / 2 + 100 },
+            cad: { x: window.innerWidth / 2 + 300, y: window.innerHeight / 2 },
+            browser: { x: window.innerWidth / 2 - 300, y: window.innerHeight / 2 },
+            kasa: { x: window.innerWidth / 2 + 350, y: window.innerHeight / 2 - 100 },
+            printer: { x: window.innerWidth / 2 - 350, y: window.innerHeight / 2 - 100 },
+            tools: { x: window.innerWidth / 2, y: window.innerHeight - 100 }
+        };
     });
 
     const [elementSizes, setElementSizes] = useState({
@@ -144,6 +167,58 @@ function App() {
     const lastFrameTimeRef = useRef(0);
     const frameCountRef = useRef(0);
     const lastVideoTimeRef = useRef(-1);
+    
+    // Camera view drag state
+    const [cameraPosition, setCameraPosition] = useState({ x: null, y: null });
+    const [isCameraDragging, setIsCameraDragging] = useState(false);
+    const cameraDragRef = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0 });
+    
+    // Load saved positions from server on settings update
+    useEffect(() => {
+        const handleSettings = (settings) => {
+            if (settings?.window_positions) {
+                // Merge server positions with current, but prefer localStorage if newer
+                const localSaved = localStorage.getItem('nova_window_positions');
+                if (!localSaved) {
+                    setElementPositions(settings.window_positions);
+                }
+            }
+            if (settings?.camera_position) {
+                const localCamera = localStorage.getItem('nova_camera_position');
+                if (!localCamera && settings.camera_position.x !== undefined) {
+                    setCameraPosition(settings.camera_position);
+                }
+            }
+        };
+        
+        socket.on('settings', handleSettings);
+        return () => socket.off('settings', handleSettings);
+    }, []);
+
+    // Camera drag handlers
+    useEffect(() => {
+        if (!isCameraDragging) return;
+        
+        const handleCameraMouseMove = (e) => {
+            const deltaX = e.clientX - cameraDragRef.current.startX;
+            const deltaY = e.clientY - cameraDragRef.current.startY;
+            setCameraPosition({
+                x: cameraDragRef.current.initialX + deltaX,
+                y: Math.max(0, cameraDragRef.current.initialY + deltaY)
+            });
+        };
+        
+        const handleCameraMouseUp = () => {
+            setIsCameraDragging(false);
+        };
+        
+        window.addEventListener('mousemove', handleCameraMouseMove);
+        window.addEventListener('mouseup', handleCameraMouseUp);
+        return () => {
+            window.removeEventListener('mousemove', handleCameraMouseMove);
+            window.removeEventListener('mouseup', handleCameraMouseUp);
+        };
+    }, [isCameraDragging]);
 
     // Ref to track video state for the loop (avoids closure staleness)
     const isVideoOnRef = useRef(false);
@@ -171,6 +246,21 @@ function App() {
         isCameraFlippedRef.current = isCameraFlipped;
         console.log("[Ref Sync] Camera flipped ref updated to:", isCameraFlipped);
     }, [isModularMode, elementPositions, isHandTrackingEnabled, cursorSensitivity, isCameraFlipped]);
+    
+    // Persist positions to localStorage
+    useEffect(() => {
+        localStorage.setItem('nova_window_positions', JSON.stringify(elementPositions));
+        // Also emit to backend for server-side persistence
+        socket.emit('update_settings', { window_positions: elementPositions });
+    }, [elementPositions]);
+    
+    // Persist camera position
+    useEffect(() => {
+        if (cameraPosition.x !== null || cameraPosition.y !== null) {
+            localStorage.setItem('nova_camera_position', JSON.stringify(cameraPosition));
+            socket.emit('update_settings', { camera_position: cameraPosition });
+        }
+    }, [cameraPosition]);
 
     // Live Clock Update
     useEffect(() => {
@@ -329,9 +419,9 @@ function App() {
         socket.on('status', (data) => {
             addMessage('System', data.msg);
             // Update status bar based on backend messages
-            if (data.msg === 'A.D.A Started') {
+            if (data.msg === 'NOVA Started') {
                 setStatus('Model Connected');
-            } else if (data.msg === 'A.D.A Stopped') {
+            } else if (data.msg === 'NOVA Stopped') {
                 setStatus('Connected');
             }
         });
@@ -1397,7 +1487,7 @@ function App() {
             <div className="z-50 flex items-center justify-between p-2 border-b border-cyan-500/20 bg-black/40 backdrop-blur-md select-none sticky top-0" style={{ WebkitAppRegion: 'drag' }}>
                 <div className="flex items-center gap-4 pl-2">
                     <h1 className="text-xl font-bold tracking-[0.2em] text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-                        A.D.A
+                        NOVA
                     </h1>
                     <div className="text-[10px] text-cyan-700 border border-cyan-900 px-1 rounded">
                         V2.0.0
@@ -1484,28 +1574,55 @@ function App() {
                     PROJECT: {currentProject?.toUpperCase()}
                 </div>
 
+                {/* Video Feed Overlay - Draggable */}
                 <div
                     id="video"
-                    className={`fixed bottom-4 right-4 transition-all duration-200 
+                    className={`fixed transition-all duration-200 
                         ${isVideoOn ? 'opacity-100' : 'opacity-0 pointer-events-none'} 
                         backdrop-blur-md bg-black/40 border border-white/10 shadow-xl rounded-xl
                     `}
-                    style={{ zIndex: 20 }}
+                    style={{ 
+                        zIndex: 20,
+                        left: cameraPosition.x ?? undefined,
+                        right: cameraPosition.x === null ? 16 : undefined,
+                        bottom: cameraPosition.y === null ? 16 : undefined,
+                        top: cameraPosition.y ?? undefined
+                    }}
                 >
-                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none mix-blend-overlay"></div>
-                    {/* Compact Display Container (1080p Source) */}
-                    <div className="relative border border-cyan-500/30 rounded-lg overflow-hidden shadow-[0_0_20px_rgba(6,182,212,0.1)] w-80 aspect-video bg-black/80">
-                        {/* Hidden Video Element (Source) */}
-                        <video ref={videoRef} autoPlay muted className="absolute inset-0 w-full h-full object-cover opacity-0" />
+                    {/* Drag Handle Header */}
+                    <div 
+                        className="flex items-center justify-between px-2 py-1 border-b border-cyan-500/20 cursor-move hover:bg-cyan-900/20 transition-colors select-none"
+                        onMouseDown={(e) => {
+                            if (e.target.closest('button')) return;
+                            setIsCameraDragging(true);
+                            cameraDragRef.current = {
+                                startX: e.clientX,
+                                startY: e.clientY,
+                                initialX: cameraPosition.x ?? window.innerWidth - 336,
+                                initialY: cameraPosition.y ?? window.innerHeight - 196
+                            };
+                        }}
+                        title="Drag to move camera"
+                    >
+                        <div className="flex items-center gap-1">
+                            <GripVertical size={12} className="text-cyan-600" />
+                            <span className="text-[10px] text-cyan-400 font-bold tracking-wider">CAM_01</span>
+                        </div>
+                    </div>
+                    
+                    <div className="p-2">
+                        {/* Compact Display Container (1080p Source) */}
+                        <div className="relative border border-cyan-500/30 rounded-lg overflow-hidden shadow-[0_0_20px_rgba(6,182,212,0.1)] w-72 aspect-video bg-black/80">
+                            {/* Hidden Video Element (Source) */}
+                            <video ref={videoRef} autoPlay muted className="absolute inset-0 w-full h-full object-cover opacity-0" />
 
-                        <div className="absolute top-2 left-2 text-[10px] text-cyan-400 bg-black/60 backdrop-blur px-2 py-0.5 rounded border border-cyan-500/20 z-10 font-bold tracking-wider">CAM_01</div>
-
-                        {/* Canvas for Displaying Video + Skeleton (Ensures overlap) */}
-                        <canvas
-                            ref={canvasRef}
-                            className="absolute inset-0 w-full h-full opacity-80"
-                            style={{ transform: isCameraFlipped ? 'scaleX(-1)' : 'none' }}
-                        />
+                            {/* Canvas for Displaying Video + Skeleton (Ensures overlap) */}
+                            <canvas
+                                ref={canvasRef}
+                                className="absolute inset-0 w-full h-full opacity-80"
+                                style={{ transform: isCameraFlipped ? 'scaleX(-1)' : 'none' }}
+                            />
+                        </div>
                     </div>
                 </div>
 

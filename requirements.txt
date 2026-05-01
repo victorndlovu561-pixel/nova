@@ -22,3 +22,26 @@ python-dotenv
 mediapipe
 # CAD Generation
 build123d
+sounddevice
+google-genai
+google-generativeai
+pillow
+requests
+beautifulsoup4
+duckduckgo-search
+playwright          
+pyautogui
+pyperclip
+pygetwindow       
+opencv-python
+numpy
+mss
+Pillow
+psutil
+comtypes
+pycaw               
+win10toast          
+send2trash
+youtube-transcript-api
+pywinauto
+pyaudio
